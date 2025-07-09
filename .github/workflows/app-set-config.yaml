@@ -1,0 +1,103 @@
+name: Set App Configuration
+
+on:
+  workflow_call:
+    inputs:
+      appName:
+        required: true
+        type: string
+        description: "Name of the app service"
+      resourceGroupName:
+        required: true
+        type: string
+        description: "Resource group containing the app service"
+      environment:
+        required: true
+        type: string
+        description: "Environment (dev, qa, prod)"
+      type:
+        required: true
+        type: string
+        description: "Type of the app service (webapp, functionapp)"
+      filePath:
+        required: true
+        type: string
+        description: "Path to the JSON configuration file"
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+        description: "Azure credentials for authentication"
+
+jobs:
+  set-app-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Set App Configuration
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Setting configuration for ${{ inputs.type }} ${{ inputs.appName }} in ${{ inputs.resourceGroupName }} (${{ inputs.environment }})"
+            
+            # Get configuration from file
+            CONFIG_JSON=$(cat "${{ inputs.filePath }}")
+            
+            # Process configuration to extract key-value pairs
+            # Convert the JSON to a format usable by Azure CLI
+            SETTINGS_ARGS=""
+            
+            # Flatten the JSON (simple approach for common cases)
+            echo "Processing configuration file: ${{ inputs.filePath }}"
+            
+            # Use jq if available, otherwise use a simpler approach
+            if command -v jq &> /dev/null; then
+              # Use jq to flatten and process JSON
+              echo "Using jq to process configuration"
+              SETTINGS_ARGS=$(jq -r 'to_entries | map("--settings \(.key)=\(.value|tostring)") | join(" ")' "${{ inputs.filePath }}")
+            else
+              # Simpler approach: assume top-level keys are settings
+              echo "Using basic JSON processing (no jq available)"
+              # Extract top-level key-value pairs using grep and sed
+              SETTINGS_ARGS=$(grep -o '"[^"]*"\s*:\s*"[^"]*"' "${{ inputs.filePath }}" | \
+                sed 's/"\([^"]*\)"\s*:\s*"\([^"]*\)"/--settings \1=\2/g' | tr '\n' ' ')
+            fi
+            
+            echo "Extracted settings arguments: $SETTINGS_ARGS"
+            
+            # Apply settings
+            if [ "${{ inputs.type }}" == "webapp" ]; then
+              echo "Setting webapp configuration"
+              eval "az webapp config appsettings set --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }} $SETTINGS_ARGS"
+            elif [ "${{ inputs.type }}" == "functionapp" ]; then
+              echo "Setting functionapp configuration"
+              eval "az functionapp config appsettings set --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }} $SETTINGS_ARGS"
+            else
+              echo "Unsupported app type: ${{ inputs.type }}"
+              exit 1
+            fi
+            
+            echo "Configuration updated successfully"
+      
+      - name: Restart App Service
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Restarting ${{ inputs.type }} ${{ inputs.appName }} after configuration update"
+            
+            if [ "${{ inputs.type }}" == "webapp" ]; then
+              az webapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+            elif [ "${{ inputs.type }}" == "functionapp" ]; then
+              az functionapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+            else
+              echo "Unsupported app type: ${{ inputs.type }}"
+              exit 1
+            fi
+            
+            echo "App service restarted successfully"

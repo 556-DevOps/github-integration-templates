@@ -1,0 +1,58 @@
+name: Change Container Image
+
+on:
+  workflow_call:
+    inputs:
+      appName:
+        required: true
+        type: string
+        description: "Name of the app service"
+      resourceGroupName:
+        required: true
+        type: string
+        description: "Resource group containing the app service"
+      imageName:
+        required: true
+        type: string
+        description: "Full image name including repository and tag"
+
+jobs:
+  change-container-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Change Container Image
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Changing container image for app service ${{ inputs.appName }} to ${{ inputs.imageName }}"
+            
+            # Extract registry name from the image name (assuming format: registry.azurecr.io/repo/image:tag)
+            image_parts=(${inputs.imageName//\// })
+            registry_url="https://${image_parts[0]}"
+            
+            # Update the container settings
+            az webapp config container set \
+              --name ${{ inputs.appName }} \
+              --resource-group ${{ inputs.resourceGroupName }} \
+              --docker-custom-image-name "${{ inputs.imageName }}" \
+              --docker-registry-server-url "$registry_url"
+            
+            echo "Container image updated successfully"
+      
+      - name: Wait for Changes to Apply
+        run: |
+          echo "Waiting 60 seconds for changes to propagate..."
+          sleep 60
+      
+      - name: Restart App Service
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Restarting app service ${{ inputs.appName }} after image change"
+            az webapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+            echo "App service restarted successfully"

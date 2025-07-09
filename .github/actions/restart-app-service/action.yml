@@ -1,0 +1,41 @@
+name: 'Restart App Service'
+description: 'Restart Azure App Service (webapp or functionapp)'
+inputs:
+  appName:
+    description: 'Name of the app service'
+    required: true
+  resourceGroupName:
+    description: 'Resource group containing the app service'
+    required: true
+  environment:
+    description: 'Environment (dev, qa, prod)'
+    required: true
+  type:
+    description: 'Type of the app service (webapp, functionapp)'
+    required: true
+  azureCredentials:
+    description: 'Azure credentials for authentication'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ inputs.azureCredentials }}
+    
+    - name: Restart App Service
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "Restarting ${{ inputs.type }} ${{ inputs.appName }} in ${{ inputs.resourceGroupName }} (${{ inputs.environment }})"
+          if [ "${{ inputs.type }}" == "webapp" ]; then
+            az webapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+          elif [ "${{ inputs.type }}" == "functionapp" ]; then
+            az functionapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+          else
+            echo "Unsupported app type: ${{ inputs.type }}"
+            exit 1
+          fi
+          echo "App service restarted successfully"

@@ -1,0 +1,71 @@
+name: Delete App Configuration Settings
+
+on:
+  workflow_call:
+    inputs:
+      appName:
+        required: true
+        type: string
+        description: "Name of the app service"
+      resourceGroupName:
+        required: true
+        type: string
+        description: "Resource group containing the app service"
+      environment:
+        required: true
+        type: string
+        description: "Environment (dev, qa, prod)"
+      type:
+        required: true
+        type: string
+        description: "Type of the app service (webapp, functionapp)"
+      settingNames:
+        required: true
+        type: string
+        description: "Space-separated list of setting names to delete"
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+        description: "Azure credentials for authentication"
+
+jobs:
+  delete-app-config-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Delete App Configuration Settings
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Deleting configuration settings for ${{ inputs.type }} ${{ inputs.appName }} in ${{ inputs.resourceGroupName }} (${{ inputs.environment }})"
+            
+            # Parse space-separated list of setting names
+            settings="${{ inputs.settingNames }}"
+            
+            # Check if settings is empty or just whitespace
+            if [[ -z "${settings// }" ]]; then
+              echo "No settings provided to delete"
+              exit 0
+            fi
+            
+            # Process each setting name
+            for setting_name in $settings; do
+              echo "Deleting setting: $setting_name"
+              
+              if [ "${{ inputs.type }}" == "webapp" ]; then
+                az webapp config appsettings delete --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }} --setting-names "$setting_name" --output none
+              elif [ "${{ inputs.type }}" == "functionapp" ]; then
+                az functionapp config appsettings delete --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }} --setting-names "$setting_name" --output none
+              else
+                echo "Unsupported app type: ${{ inputs.type }}"
+                exit 1
+              fi
+              
+              echo "Setting '$setting_name' deleted successfully"
+            done
+            
+            echo "All specified configuration settings deleted successfully"

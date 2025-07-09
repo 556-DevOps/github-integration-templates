@@ -1,0 +1,57 @@
+name: 'Build and Push Image to ACR'
+description: 'Build Docker image and push to Azure Container Registry'
+inputs:
+  appName:
+    description: 'Name of the app service'
+    required: true
+  resourceGroupName:
+    description: 'Resource group containing the app service'
+    required: true
+  environment:
+    description: 'Environment (dev, qa, prod)'
+    required: true
+  containerRegistry:
+    description: 'Container registry name'
+    required: true
+  imageRepositoryAndTag:
+    description: 'Image repository and tag (format: repo/image:tag)'
+    required: true
+  dockerFile:
+    description: 'Path to the Dockerfile'
+    required: true
+    default: './Dockerfile'
+  azureCredentials:
+    description: 'Azure credentials for authentication'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ inputs.azureCredentials }}
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to ACR using Managed Identity
+      run: |
+        az acr login --name ${{ inputs.containerRegistry }}
+      shell: bash
+    
+    - name: Build and push to ACR
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ${{ inputs.dockerFile }}
+        push: true
+        tags: ${{ inputs.containerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+        cache-from: type=registry,ref=${{ inputs.containerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+        cache-to: type=inline
+    
+    - name: Verify image in ACR
+      run: |
+        az acr repository show --name ${{ inputs.containerRegistry }} --image ${{ inputs.imageRepositoryAndTag }}
+        echo "Successfully pushed image to ACR: ${{ inputs.containerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}"
+      shell: bash

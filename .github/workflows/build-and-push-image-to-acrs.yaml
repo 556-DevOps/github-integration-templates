@@ -1,0 +1,139 @@
+name: Build and Push Image to Azure Container Registries
+
+on:
+  workflow_call:
+    inputs:
+      appName:
+        required: true
+        type: string
+        description: "Name of the app service"
+      resourceGroupName:
+        required: true
+        type: string
+        description: "Resource group containing the app service"
+      environment:
+        required: true
+        type: string
+        description: "Environment (dev, qa, prod)"
+      devContainerRegistry:
+        required: true
+        type: string
+        description: "Development container registry name"
+      qaContainerRegistry:
+        required: true
+        type: string
+        description: "QA container registry name"
+      imageRepositoryAndTag:
+        required: true
+        type: string
+        description: "Image repository and tag (format: repo/image:tag)"
+      dockerFile:
+        required: true
+        type: string
+        description: "Path to the Dockerfile"
+      changeImageOnWebapp:
+        required: false
+        type: boolean
+        default: false
+        description: "Flag to also change the image on the webapp"
+
+jobs:
+  build-and-push-to-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to DEV ACR using Managed Identity
+        run: |
+          az acr login --name ${{ inputs.devContainerRegistry }}
+      
+      - name: Build and push to DEV ACR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ inputs.dockerFile }}
+          push: true
+          tags: ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+          cache-from: type=registry,ref=${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+          cache-to: type=inline
+      
+      - name: Verify image in DEV ACR
+        run: |
+          az acr repository show --name ${{ inputs.devContainerRegistry }} --image ${{ inputs.imageRepositoryAndTag }}
+          echo "Successfully pushed image to DEV ACR: ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}"
+
+  push-to-qa:
+    needs: build-and-push-to-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      # - name: Login to DEV ACR
+      #   uses: azure/docker-login@v1
+      #   with:
+      #     login-server: ${{ inputs.devContainerRegistry }}.azurecr.io
+      #     username: ${{ inputs.devContainerRegistry }}
+      #     password: ${{ secrets.DEV_ACR_PASSWORD }}
+      
+      # - name: Login to QA ACR
+      #   uses: azure/docker-login@v1
+      #   with:
+      #     login-server: ${{ inputs.qaContainerRegistry }}.azurecr.io
+      #     username: ${{ inputs.qaContainerRegistry }}
+      #     password: ${{ secrets.QA_ACR_PASSWORD }}
+      
+      - name: Login to ACRs using Managed Identity and transfer image
+        run: |
+          # Login to both ACRs using managed identity
+          az acr login --name ${{ inputs.devContainerRegistry }}
+          az acr login --name ${{ inputs.qaContainerRegistry }}
+          
+          # Pull the image from DEV ACR
+          docker pull ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+          
+          # Tag for QA ACR
+          docker tag ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }} ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+          
+          # Push to QA ACR
+          docker push ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
+          
+          echo "Successfully pushed image to QA ACR: ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}"
+      
+      - name: Verify image in QA ACR
+        run: |
+          az acr repository show --name ${{ inputs.qaContainerRegistry }} --image ${{ inputs.imageRepositoryAndTag }}
+      
+      - name: Change image on webapp if requested
+        if: ${{ inputs.changeImageOnWebapp }}
+        run: |
+          echo "Changing image on webapp ${{ inputs.appName }}"
+          
+          # Use the appropriate container registry based on environment
+          if [ "${{ inputs.environment }}" == "dev" ]; then
+            container_registry="${{ inputs.devContainerRegistry }}.azurecr.io"
+          else
+            container_registry="${{ inputs.qaContainerRegistry }}.azurecr.io"
+          fi
+          
+          # Update the webapp container image
+          az webapp config container set --name ${{ inputs.appName }} \
+            --resource-group ${{ inputs.resourceGroupName }} \
+            --docker-custom-image-name "$container_registry/${{ inputs.imageRepositoryAndTag }}" \
+            --docker-registry-server-url "https://$container_registry"
+          
+          # Restart the webapp
+          az webapp restart --name ${{ inputs.appName }} --resource-group ${{ inputs.resourceGroupName }}
+          
+          echo "Successfully updated image on webapp ${{ inputs.appName }}"
