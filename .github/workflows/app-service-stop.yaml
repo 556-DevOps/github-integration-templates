@@ -29,12 +29,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2.3.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
       - name: Stop App Service
-        uses: azure/CLI@v1
+        uses: azure/CLI@v2.1.0
         with:
           inlineScript: |
             echo "Stopping ${{ inputs.type }} ${{ inputs.appName }} in ${{ inputs.resourceGroupName }} (${{ inputs.environment }})"

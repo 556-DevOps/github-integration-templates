@@ -21,12 +21,12 @@ runs:
   using: 'composite'
   steps:
     - name: Azure Login
-      uses: azure/login@v1
+      uses: azure/login@v2.3.0
       with:
         creds: ${{ inputs.azureCredentials }}
     
     - name: Restart App Service
-      uses: azure/CLI@v1
+      uses: azure/CLI@v2.1.0
       with:
         inlineScript: |
           echo "Restarting ${{ inputs.type }} ${{ inputs.appName }} in ${{ inputs.resourceGroupName }} (${{ inputs.environment }})"

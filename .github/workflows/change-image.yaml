@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2.3.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
       - name: Change Container Image
-        uses: azure/CLI@v1
+        uses: azure/CLI@v2.1.0
         with:
           inlineScript: |
             echo "Changing container image for app service ${{ inputs.appName }} to ${{ inputs.imageName }}"
@@ -54,7 +54,7 @@ jobs:
           sleep 60
       
       - name: Restart App Service
-        uses: azure/CLI@v1
+        uses: azure/CLI@v2.1.0
         with:
           inlineScript: |
             echo "Restarting app service ${{ inputs.appName }} after image change"
