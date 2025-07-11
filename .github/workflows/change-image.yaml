@@ -31,15 +31,19 @@ jobs:
           inlineScript: |
             echo "Changing container image for app service ${{ inputs.appName }} to ${{ inputs.imageName }}"
             
-            # Extract registry name from the image name (assuming format: registry.azurecr.io/repo/image:tag)
-            image_parts=(${inputs.imageName//\// })
+            # Normalize image name to lowercase for registry consistency
+            NORMALIZED_IMAGE_NAME=$(echo "${{ inputs.imageName }}" | tr '[:upper:]' '[:lower:]')
+            echo "Normalized image name: $NORMALIZED_IMAGE_NAME"
+            
+            # Extract registry name from the normalized image name (assuming format: registry.azurecr.io/repo/image:tag)
+            image_parts=(${NORMALIZED_IMAGE_NAME//\// })
             registry_url="https://${image_parts[0]}"
             
             # Update the container settings
             az webapp config container set \
               --name ${{ inputs.appName }} \
               --resource-group ${{ inputs.resourceGroupName }} \
-              --container-image-name "${{ inputs.imageName }}" \
+              --container-image-name "$NORMALIZED_IMAGE_NAME" \
               --docker-registry-server-url "$registry_url"
             
             echo "Container image updated successfully"
