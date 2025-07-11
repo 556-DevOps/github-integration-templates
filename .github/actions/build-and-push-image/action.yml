@@ -32,23 +32,13 @@ runs:
       with:
         creds: ${{ inputs.azureCredentials }}
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Login to ACR using Managed Identity
-      run: |
-        az acr login --name ${{ inputs.containerRegistry }}
-      shell: bash
-    
     - name: Build and push to ACR
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ${{ inputs.dockerFile }}
-        push: true
-        tags: ${{ inputs.containerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-        cache-from: type=registry,ref=${{ inputs.containerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-        cache-to: type=inline
+      run: |
+        az acr build --registry ${{ inputs.containerRegistry }} \
+                     --image ${{ inputs.imageRepositoryAndTag }} \
+                     --file ${{ inputs.dockerFile }} \
+                     .
+      shell: bash
     
     - name: Verify image in ACR
       run: |

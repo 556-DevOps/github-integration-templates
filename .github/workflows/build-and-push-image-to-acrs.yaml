@@ -49,22 +49,12 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Login to DEV ACR using Managed Identity
-        run: |
-          az acr login --name ${{ inputs.devContainerRegistry }}
-      
       - name: Build and push to DEV ACR
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ${{ inputs.dockerFile }}
-          push: true
-          tags: ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-          cache-from: type=registry,ref=${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-          cache-to: type=inline
+        run: |
+          az acr build --registry ${{ inputs.devContainerRegistry }} \
+                       --image ${{ inputs.imageRepositoryAndTag }} \
+                       --file ${{ inputs.dockerFile }} \
+                       .
       
       - name: Verify image in DEV ACR
         run: |
@@ -94,22 +84,15 @@ jobs:
       #     username: ${{ inputs.qaContainerRegistry }}
       #     password: ${{ secrets.QA_ACR_PASSWORD }}
       
-      - name: Login to ACRs using Managed Identity and transfer image
+      - name: Transfer image from DEV to QA ACR
         run: |
-          # Login to both ACRs using managed identity
-          az acr login --name ${{ inputs.devContainerRegistry }}
-          az acr login --name ${{ inputs.qaContainerRegistry }}
+          # Import image from DEV ACR to QA ACR using az acr import
+          az acr import --name ${{ inputs.qaContainerRegistry }} \
+                        --source ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }} \
+                        --image ${{ inputs.imageRepositoryAndTag }} \
+                        --registry ${{ inputs.devContainerRegistry }}
           
-          # Pull the image from DEV ACR
-          docker pull ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-          
-          # Tag for QA ACR
-          docker tag ${{ inputs.devContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }} ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-          
-          # Push to QA ACR
-          docker push ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}
-          
-          echo "Successfully pushed image to QA ACR: ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}"
+          echo "Successfully imported image to QA ACR: ${{ inputs.qaContainerRegistry }}.azurecr.io/${{ inputs.imageRepositoryAndTag }}"
       
       - name: Verify image in QA ACR
         run: |
