@@ -39,7 +39,7 @@ jobs:
             az webapp config container set \
               --name ${{ inputs.appName }} \
               --resource-group ${{ inputs.resourceGroupName }} \
-              --docker-custom-image-name "${{ inputs.imageName }}" \
+              --container-image-name "${{ inputs.imageName }}" \
               --docker-registry-server-url "$registry_url"
             
             echo "Container image updated successfully"

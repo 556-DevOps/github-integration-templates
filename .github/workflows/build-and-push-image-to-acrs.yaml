@@ -113,7 +113,7 @@ jobs:
           # Update the webapp container image
           az webapp config container set --name ${{ inputs.appName }} \
             --resource-group ${{ inputs.resourceGroupName }} \
-            --docker-custom-image-name "$container_registry/${{ inputs.imageRepositoryAndTag }}" \
+            --container-image-name "$container_registry/${{ inputs.imageRepositoryAndTag }}" \
             --docker-registry-server-url "https://$container_registry"
           
           # Restart the webapp
