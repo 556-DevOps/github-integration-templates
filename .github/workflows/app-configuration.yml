@@ -34,7 +34,11 @@ on:
         required: false
         type: string
     secrets:
-      AZURE_CREDENTIALS:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
         required: true
 
 jobs:
@@ -49,9 +53,9 @@ jobs:
           path: caller-repo
 
       - name: Azure Login
-        uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
+        uses: azure/login@v2
         with:
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get Configuration
         if: inputs.operation == 'get'

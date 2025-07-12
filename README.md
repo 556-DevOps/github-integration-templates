@@ -7,7 +7,6 @@ This repository contains reusable GitHub Actions workflows and custom actions fo
 ```
 .github/
 ├── actions/                    # Custom GitHub Actions
-│   ├── azure-login/           # Azure service principal authentication
 │   ├── app-service-operation/ # App Service lifecycle operations
 │   └── container-registry/    # Container registry operations
 └── workflows/                 # Reusable workflows
@@ -88,21 +87,6 @@ jobs:
 ```
 
 ## Custom Actions
-
-### Azure Login
-**Path**: `.github/actions/azure-login`
-
-Authenticates with Azure using service principal credentials.
-
-**Usage**:
-```yaml
-- name: Azure Login
-  uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
-  with:
-    azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-    azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-    azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-```
 
 ### App Service Operation
 **Path**: `.github/actions/app-service-operation`

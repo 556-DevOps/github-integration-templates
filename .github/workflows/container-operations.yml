@@ -52,9 +52,9 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Azure Login
-        uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
+        uses: azure/login@v2
         with:
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Container Registry Operation
         uses: 556-DevOps/github-integration-templates/.github/actions/container-registry@main

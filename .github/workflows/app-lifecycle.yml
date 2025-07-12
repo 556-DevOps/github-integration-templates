@@ -33,9 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Azure Login
-        uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
+        uses: azure/login@v2
         with:
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: App Service Operation
         uses: 556-DevOps/github-integration-templates/.github/actions/app-service-operation@main
