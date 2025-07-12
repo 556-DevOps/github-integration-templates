@@ -34,9 +34,7 @@ jobs:
       app-type: "webapp"          # webapp, functionapp
       environment: "qa"
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ### App Configuration Operations
@@ -58,9 +56,7 @@ jobs:
       file-path: "config/settings.json"  # Required for 'set' operation
       setting-names: "KEY1 KEY2"         # Required for 'delete' operation
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ### Container Operations
@@ -81,9 +77,7 @@ jobs:
       resource-group-name: "my-rg"
       environment: "qa"
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ## Custom Actions
@@ -121,13 +115,11 @@ Handles Azure Container Registry operations for image management.
 
 ## Required Secrets
 
-All workflows and actions require these Azure service principal secrets:
+All workflows and actions require this Azure service principal secret:
 
 | Secret Name | Description |
 |-------------|-------------|
-| `AZURE_CLIENT_ID` | Service Principal Application ID |
-| `AZURE_CLIENT_SECRET` | Service Principal Secret/Password |
-| `AZURE_TENANT_ID` | Azure Active Directory Tenant ID |
+| `AZURE_CREDENTIALS` | Service Principal credentials JSON containing clientId, clientSecret, tenantId, and subscriptionId |
 
 ## Supported Operations
 
@@ -163,9 +155,7 @@ jobs:
       app-type: "webapp"
       environment: "prod"
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ### Update Configuration
@@ -186,9 +176,7 @@ jobs:
       environment: "qa"
       file-path: "config/qa-settings.json"
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ## Architecture
@@ -198,7 +186,7 @@ This template repository follows GitHub Actions best practices:
 - **Reusable Workflows**: Centralized workflow logic that can be called from other repositories
 - **Composite Actions**: Modular actions that can be combined in different workflows
 - **Input Validation**: Required parameters ensure workflows fail fast with clear error messages
-- **Security**: Service principal authentication with minimal required permissions
+- **Security**: Service principal authentication with minimal required permissions using official Azure/login@v2 action
 
 ## Contributing
 
