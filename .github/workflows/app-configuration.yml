@@ -34,11 +34,7 @@ on:
         required: false
         type: string
     secrets:
-      AZURE_CLIENT_ID:
-        required: true
-      AZURE_CLIENT_SECRET:
-        required: true
-      AZURE_TENANT_ID:
+      AZURE_CREDENTIALS:
         required: true
 
 jobs:
