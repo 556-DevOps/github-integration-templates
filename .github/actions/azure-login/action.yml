@@ -1,14 +1,8 @@
 name: 'Azure Login'
 description: 'Login to Azure using service principal credentials'
 inputs:
-  azure-client-id:
-    description: 'Azure Client ID'
-    required: true
-  azure-client-secret:
-    description: 'Azure Client Secret'
-    required: true
-  azure-tenant-id:
-    description: 'Azure Tenant ID'
+  azure-credentials:
+    description: 'Azure credentials JSON containing clientId, clientSecret, and tenantId'
     required: true
 runs:
   using: 'composite'
@@ -16,5 +10,8 @@ runs:
     - name: Login to Azure
       shell: bash
       run: |
-        echo "Logging in with client ID: ${{ inputs.azure-client-id }}"
-        az login --service-principal -u "${{ inputs.azure-client-id }}" -p "${{ inputs.azure-client-secret }}" --tenant "${{ inputs.azure-tenant-id }}"
+        CLIENT_ID=$(echo '${{ inputs.azure-credentials }}' | jq -r '.clientId')
+        CLIENT_SECRET=$(echo '${{ inputs.azure-credentials }}' | jq -r '.clientSecret')
+        TENANT_ID=$(echo '${{ inputs.azure-credentials }}' | jq -r '.tenantId')
+        echo "Logging in with client ID: $CLIENT_ID"
+        az login --service-principal -u "$CLIENT_ID" -p "$CLIENT_SECRET" --tenant "$TENANT_ID"
