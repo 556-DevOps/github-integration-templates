@@ -33,8 +33,12 @@ runs:
     - name: Build and Push Image
       if: inputs.operation == 'build-and-push'
       shell: bash
+      working-directory: caller-repo
       run: |
         echo "Building and pushing image: ${NORMALIZED_REGISTRY_NAME}.azurecr.io/${{ inputs.image-details }}"
+        echo "Working directory: $(pwd)"
+        echo "Dockerfile path: ${{ inputs.dockerfile-path }}"
+        ls -la ${{ inputs.dockerfile-path }}
         az acr build --registry $NORMALIZED_REGISTRY_NAME \
                      --image ${{ inputs.image-details }} \
                      --file ${{ inputs.dockerfile-path }} \

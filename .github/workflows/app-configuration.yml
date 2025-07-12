@@ -45,9 +45,6 @@ jobs:
   app-configuration:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout templates repository
-        uses: actions/checkout@v3
-
       - name: Checkout calling repository (for configuration files)
         if: inputs.operation == 'set' || inputs.operation == 'delete'
         uses: actions/checkout@v3
@@ -56,7 +53,7 @@ jobs:
           path: caller-repo
 
       - name: Azure Login
-        uses: ./.github/actions/azure-login
+        uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
         with:
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}

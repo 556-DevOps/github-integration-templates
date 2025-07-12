@@ -36,18 +36,15 @@ jobs:
   app-lifecycle:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout templates repository
-        uses: actions/checkout@v3
-
       - name: Azure Login
-        uses: ./.github/actions/azure-login
+        uses: 556-DevOps/github-integration-templates/.github/actions/azure-login@main
         with:
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
 
       - name: App Service Operation
-        uses: ./.github/actions/app-service-operation
+        uses: 556-DevOps/github-integration-templates/.github/actions/app-service-operation@main
         with:
           operation: ${{ inputs.operation }}
           app-name: ${{ inputs.app-name }}
