@@ -1,0 +1,55 @@
+name: 'Container Registry Operation'
+description: 'Perform operations on Azure Container Registry'
+inputs:
+  operation:
+    description: 'Operation to perform (build-and-push, change-image)'
+    required: true
+  registry-name:
+    description: 'Azure Container Registry name'
+    required: true
+  image-details:
+    description: 'Image repository and tag (e.g. "ai/dual-graphs:v1")'
+    required: true
+  app-name:
+    description: 'Azure App Service name (for change-image operation)'
+    required: false
+  resource-group-name:
+    description: 'Azure resource group name (for change-image operation)'
+    required: false
+  dockerfile-path:
+    description: 'Path to Dockerfile (for build-and-push operation)'
+    required: false
+    default: './Dockerfile'
+runs:
+  using: 'composite'
+  steps:
+    - name: Normalize Registry Name
+      shell: bash
+      run: |
+        REGISTRY_NAME=$(echo "${{ inputs.registry-name }}" | tr '[:upper:]' '[:lower:]')
+        echo "NORMALIZED_REGISTRY_NAME=$REGISTRY_NAME" >> $GITHUB_ENV
+        echo "Normalized registry name: $REGISTRY_NAME"
+
+    - name: Build and Push Image
+      if: inputs.operation == 'build-and-push'
+      shell: bash
+      run: |
+        echo "Building and pushing image: ${NORMALIZED_REGISTRY_NAME}.azurecr.io/${{ inputs.image-details }}"
+        az acr build --registry $NORMALIZED_REGISTRY_NAME \
+                     --image ${{ inputs.image-details }} \
+                     --file ${{ inputs.dockerfile-path }} \
+                     .
+        
+        echo "Verifying image in ACR..."
+        az acr repository show --name $NORMALIZED_REGISTRY_NAME --image ${{ inputs.image-details }}
+        echo "Successfully pushed image to ACR: ${NORMALIZED_REGISTRY_NAME}.azurecr.io/${{ inputs.image-details }}"
+
+    - name: Change Container Image
+      if: inputs.operation == 'change-image'
+      shell: bash
+      run: |
+        echo "Updating container image for ${{ inputs.app-name }} to: ${NORMALIZED_REGISTRY_NAME}.azurecr.io/${{ inputs.image-details }}"
+        az webapp config container set --name ${{ inputs.app-name }} \
+                                    --resource-group ${{ inputs.resource-group-name }} \
+                                    --container-image-name ${NORMALIZED_REGISTRY_NAME}.azurecr.io/${{ inputs.image-details }}
+        echo "Container image updated successfully"

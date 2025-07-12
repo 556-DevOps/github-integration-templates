@@ -1,0 +1,34 @@
+name: 'App Service Operation'
+description: 'Perform operations on Azure App Service (webapp or functionapp)'
+inputs:
+  operation:
+    description: 'Operation to perform (start, restart, stop)'
+    required: true
+  app-name:
+    description: 'Azure App Service name'
+    required: true
+  resource-group-name:
+    description: 'Azure resource group name'
+    required: true
+  app-type:
+    description: 'Application type (webapp, functionapp)'
+    required: true
+    default: 'webapp'
+runs:
+  using: 'composite'
+  steps:
+    - name: Perform App Service Operation
+      shell: bash
+      run: |
+        echo "Performing ${{ inputs.operation }} on ${{ inputs.app-type }} ${{ inputs.app-name }} in ${{ inputs.resource-group-name }}"
+        
+        if [ "${{ inputs.app-type }}" == "webapp" ]; then
+          az webapp ${{ inputs.operation }} --name ${{ inputs.app-name }} --resource-group ${{ inputs.resource-group-name }}
+        elif [ "${{ inputs.app-type }}" == "functionapp" ]; then
+          az functionapp ${{ inputs.operation }} --name ${{ inputs.app-name }} --resource-group ${{ inputs.resource-group-name }}
+        else
+          echo "Unsupported app type: ${{ inputs.app-type }}"
+          exit 1
+        fi
+        
+        echo "App service ${{ inputs.operation }} completed successfully"

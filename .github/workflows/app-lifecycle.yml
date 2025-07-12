@@ -1,0 +1,55 @@
+name: App Lifecycle Operations
+
+on:
+  workflow_call:
+    inputs:
+      operation:
+        description: 'Operation to perform (start, restart, stop)'
+        required: true
+        type: string
+      app-name:
+        description: 'Azure App Service name'
+        required: true
+        type: string
+      resource-group-name:
+        description: 'Azure resource group name'
+        required: true
+        type: string
+      app-type:
+        description: 'Application type (webapp, functionapp)'
+        required: true
+        type: string
+        default: 'webapp'
+      environment:
+        description: 'Environment (dev, qa, prod)'
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+jobs:
+  app-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout templates repository
+        uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: ./.github/actions/azure-login
+        with:
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: App Service Operation
+        uses: ./.github/actions/app-service-operation
+        with:
+          operation: ${{ inputs.operation }}
+          app-name: ${{ inputs.app-name }}
+          resource-group-name: ${{ inputs.resource-group-name }}
+          app-type: ${{ inputs.app-type }}

@@ -1,0 +1,76 @@
+name: Container Operations
+
+on:
+  workflow_call:
+    inputs:
+      operation:
+        description: 'Operation to perform (build-and-push, change-image)'
+        required: true
+        type: string
+      registry-name:
+        description: 'Azure Container Registry name'
+        required: true
+        type: string
+      image-details:
+        description: 'Image repository and tag (e.g. "ai/dual-graphs:v1")'
+        required: true
+        type: string
+      app-name:
+        description: 'Azure App Service name (for change-image operation)'
+        required: false
+        type: string
+      resource-group-name:
+        description: 'Azure resource group name (for change-image operation)'
+        required: false
+        type: string
+      dockerfile-path:
+        description: 'Path to Dockerfile (for build-and-push operation)'
+        required: false
+        type: string
+        default: './Dockerfile'
+      environment:
+        description: 'Environment (dev, qa, prod)'
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+jobs:
+  container-operations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout templates repository
+        uses: actions/checkout@v3
+
+      - name: Checkout calling repository (for Dockerfile and context)
+        if: inputs.operation == 'build-and-push'
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          path: caller-repo
+
+      - name: Set up Docker Buildx
+        if: inputs.operation == 'build-and-push'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: ./.github/actions/azure-login
+        with:
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Container Registry Operation
+        uses: ./.github/actions/container-registry
+        with:
+          operation: ${{ inputs.operation }}
+          registry-name: ${{ inputs.registry-name }}
+          image-details: ${{ inputs.image-details }}
+          app-name: ${{ inputs.app-name }}
+          resource-group-name: ${{ inputs.resource-group-name }}
+          dockerfile-path: ${{ inputs.operation == 'build-and-push' && format('caller-repo/{0}', inputs.dockerfile-path) || inputs.dockerfile-path }}

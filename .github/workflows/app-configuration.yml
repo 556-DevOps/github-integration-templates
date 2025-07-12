@@ -1,0 +1,110 @@
+name: App Configuration Operations
+
+on:
+  workflow_call:
+    inputs:
+      operation:
+        description: 'Operation to perform (get, set, delete)'
+        required: true
+        type: string
+      app-name:
+        description: 'Azure App Service name'
+        required: true
+        type: string
+      resource-group-name:
+        description: 'Azure resource group name'
+        required: true
+        type: string
+      app-type:
+        description: 'Application type (webapp, functionapp)'
+        required: true
+        type: string
+        default: 'webapp'
+      environment:
+        description: 'Environment (dev, qa, prod)'
+        required: true
+        type: string
+      file-path:
+        description: 'Path to configuration file (for set operation)'
+        required: false
+        type: string
+        default: 'settings.test.json'
+      setting-names:
+        description: 'Setting names to delete (space separated, for delete operation)'
+        required: false
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+jobs:
+  app-configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout templates repository
+        uses: actions/checkout@v3
+
+      - name: Checkout calling repository (for configuration files)
+        if: inputs.operation == 'set' || inputs.operation == 'delete'
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          path: caller-repo
+
+      - name: Azure Login
+        uses: ./.github/actions/azure-login
+        with:
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Get Configuration
+        if: inputs.operation == 'get'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            echo "Getting ${{ inputs.app-type }} ${{ inputs.app-name }} configuration from ${{ inputs.resource-group-name }} (${{ inputs.environment }})"
+            if [ "${{ inputs.app-type }}" == "webapp" ]; then
+              az webapp config appsettings list --name ${{ inputs.app-name }} --resource-group ${{ inputs.resource-group-name }} --output table
+            elif [ "${{ inputs.app-type }}" == "functionapp" ]; then
+              az functionapp config appsettings list --name ${{ inputs.app-name }} --resource-group ${{ inputs.resource-group-name }} --output table
+            else
+              echo "Unsupported app type: ${{ inputs.app-type }}"
+              exit 1
+            fi
+            echo "Configuration retrieved successfully"
+
+      - name: Set Configuration
+        if: inputs.operation == 'set'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            echo "Setting configuration for ${{ inputs.app-name }} from ${{ inputs.file-path }}"
+            settings="$(cat caller-repo/${{ inputs.file-path }})"
+            az webapp config appsettings set --name ${{ inputs.app-name }} \
+                                         --resource-group ${{ inputs.resource-group-name }} \
+                                         --settings "$settings"
+            echo "Configuration updated successfully"
+
+      - name: Delete Configuration
+        if: inputs.operation == 'delete'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            echo "Deleting configuration settings for ${{ inputs.app-name }}: ${{ inputs.setting-names }}"
+            for setting in ${{ inputs.setting-names }}; do
+              if [ -n "$setting" ] && [ "$setting" != " " ]; then
+                echo "Deleting setting: $setting"
+                az webapp config appsettings delete --name ${{ inputs.app-name }} \
+                                                 --resource-group ${{ inputs.resource-group-name }} \
+                                                 --setting-names "$setting"
+              fi
+            done
+            echo "Configuration settings deleted successfully"
